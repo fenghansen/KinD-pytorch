@@ -8,15 +8,17 @@ from tqdm import tqdm
 from torchvision.utils import make_grid
 from torchvision import transforms
 from torchsummary import summary
-from trainer.base_trainer import BaseTrainer
+from base_trainer import BaseTrainer
+from losses import Decom_Loss
+from models import DecomNet
+from base_parser import BaseParser
 from dataloader import *
 
 class Decom_Trainer(BaseTrainer):
     def train(self):
         print(f'Using device {self.device}')
-        summary(self.model, input_size=(3, 48, 48))
-
         self.model.to(device=self.device)
+        summary(self.model, input_size=(3, 48, 48))
         # faster convolutions, but more memory
         # cudnn.benchmark = True
 
@@ -27,17 +29,17 @@ class Decom_Trainer(BaseTrainer):
                 idx = 0
                 iter_start_time = time.time()
                 with tqdm(total=self.steps_per_epoch) as pbar:
-                    for L_low_tensor, L_high_tensor in self.dataloader:
+                    for L_low_tensor, L_high_tensor, name in self.dataloader:
                         L_low = L_low_tensor.to(self.device)
                         L_high = L_high_tensor.to(self.device)
                         R_low, I_low = self.model(L_low)
                         R_high, I_high = self.model(L_high)
                         loss = self.loss_fn(R_low, R_high, I_low, I_high, L_low, L_high)
-                        print("iter:  ", idx, "average_loss:  ", loss.item())
+                        # print("iter:  ", idx, "average_loss:  ", loss.item())
                         optimizer.zero_grad()
                         loss.backward()
                         optimizer.step()
-                        steps += 1
+                        idx += 1
                         pbar.update(1)
                         pbar.set_postfix({'loss':loss.item()})
 
@@ -74,19 +76,15 @@ class Decom_Trainer(BaseTrainer):
         pass
 
 if __name__ == "__main__":
-    from loss_fn import Decom_Loss
-    from models import DecomNet
-    from base_parser import BaseParser
     root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
     root_path_test = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\eval15'
+    list_path_train = os.path.join(root_path_train, 'pair_list.csv')
+    list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
     log("Buliding LOL Dataset...")
     transform = transforms.Compose([transforms.ToTensor()])
-    dst_train = LOLDataset(root_path_train, list_path_train, transform, crop_size=96, to_RAM=True)
-    dst_test = LOLDataset(root_path_test, list_path_test, transform, crop_size=96, to_RAM=True)
-
-    train_loader = DataLoader(dst_train, batch_size = Batch_size)
-    test_loader = DataLoader(dst_test, batch_size=1)
+    dst_train = LOLDataset(root_path_train, list_path_train, transform, crop_size=48, to_RAM=True)
+    dst_test = LOLDataset(root_path_test, list_path_test, transform, crop_size=48, to_RAM=True)
 
     criterion = Decom_Loss()
     decom_net = DecomNet()
@@ -101,6 +99,9 @@ if __name__ == "__main__":
 
     with open(args.config) as f:
         config = yaml.load(f)
+
+    train_loader = DataLoader(dst_train, batch_size = config['batch_size'])
+    test_loader = DataLoader(dst_test, batch_size=1)
 
     trainer = Decom_Trainer(config, train_loader, criterion, decom_net)
     # --config ./config/config.yaml

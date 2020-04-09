@@ -18,6 +18,7 @@ class BaseTrainer:
     def initialize(self, config):
         self.batch_size = config['batch_size']
         self.epochs = config['epochs']
+        self.steps_per_epoch = config['steps_per_epoch']
         self.print_frequency = config['print_frequency']
         self.save_frequency = config['save_frequency']
         self.weights_dir = config['weights_dir']

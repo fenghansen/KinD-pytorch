@@ -24,7 +24,7 @@ class ConvTranspose2D(nn.Module):
         if activation == 'relu':
             self.ActivationLayer = nn.ReLU(inplace=True)
         self.deconv_relu = nn.Sequential(
-            nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2, padding=(1,0)),
+            nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2, padding=0),
             self.ActivationLayer,
         )
 
@@ -42,5 +42,5 @@ class MaxPooling2D(nn.Module):
 
 
 class Concat(nn.Module):
-    def forward(self, args):
-        return torch.cat(args)
+    def forward(self, x, y):
+        return torch.cat((x, y), dim=1)
