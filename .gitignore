@@ -1,3 +1,10 @@
+# custom ignore
+*.h5
+*.jpg
+*.png
+*.pth
+*.zip
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
