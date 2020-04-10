@@ -5,6 +5,7 @@ import sys
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 from torchsummary import summary
 
 class BaseTrainer:
@@ -17,6 +18,7 @@ class BaseTrainer:
 
     def initialize(self, config):
         self.batch_size = config['batch_size']
+        self.length = config['length']
         self.epochs = config['epochs']
         self.steps_per_epoch = config['steps_per_epoch']
         self.print_frequency = config['print_frequency']
@@ -56,11 +58,9 @@ class BaseTrainer:
                         print('Saved model.')
                         self.test(iter, idx, plotImage=True, saveImage=True)
                 iter_end_time = time.time()
-                print("End of epochs {},    Time taken: {},\
-                        average loss: {}".format(iter, iter_end_time - iter_start_time, epoch_loss / steps))
+                print("End of epochs {},    Time taken: {},average loss: {}".format(iter, iter_end_time - iter_start_time, epoch_loss / steps))
                 iter_end_time = time.time()
-                print("End of epochs {},    Time taken: {.3f},\
-                    average loss: {.5f}".format(iter, iter_end_time - iter_start_time, epoch_loss / steps))
+                print("End of epochs {},    Time taken: {.3f}, average loss: {.5f}".format(iter, iter_end_time - iter_start_time, epoch_loss / steps))
         except KeyboardInterrupt:
             torch.save(self.model.state_dict(), 'INTERRUPTED.pth')
             print('Saved interrupt')
@@ -71,29 +71,3 @@ class BaseTrainer:
 
     def test(self, epoch, iter, plotImage=False, saveImage=False):
         pass
-
-    def sample(self, imgs, split=None ,figure_size=(2, 3), img_dim=96, path=None, num=0):
-        h, w = figure_size
-        if split is None:
-            split = range(len(imgs)+1)
-        figure = np.zeros((img_dim*h, img_dim*w, 3))
-        for i in range(h):
-            for j in range(w):
-                idx = i*w+j
-                if idx >= len(split)-1: break
-                digit = imgs[ split[idx] : split[idx+1] ]
-                if len(digit) == 1:
-                    for k in range(3):
-                        figure[i*img_dim: (i+1)*img_dim,
-                            j*img_dim: (j+1)*img_dim, k] = digit
-                elif len(digit) == 3:
-                    for k in range(3):
-                        figure[i*img_dim: (i+1)*img_dim,
-                            j*img_dim: (j+1)*img_dim, k] = digit[2-k]
-        if path is None:
-            cv2.imshow('Figure%d'%num, figure)
-            cv2.waitKey()
-        else:
-            figure *= 255
-            print(">> Saving Image at {}".format(path))
-            cv2.imwrite(path, figure)

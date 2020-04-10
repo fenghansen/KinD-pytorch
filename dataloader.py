@@ -77,8 +77,8 @@ class LOLDataset(Dataset):
  
  
         '''convert PIL Image to numpy array'''
-        lr_crop = np.asarray(lr_crop, np.float32).transpose((2,0,1))
-        hr_crop = np.asarray(hr_crop, np.float32).transpose((2,0,1))
+        lr_crop = np.asarray(lr_crop, np.float32).transpose((2,0,1)) / 255.
+        hr_crop = np.asarray(hr_crop, np.float32).transpose((2,0,1)) / 255.
         return lr_crop, hr_crop, name
 
 def build_LOLDataset_list_txt(dst_dir):
@@ -94,25 +94,55 @@ def build_LOLDataset_list_txt(dst_dir):
     log(f"Finish... There are {len(img_lr_path)} pairs...")
     return list_path
 
+def sample(imgs, split=None ,figure_size=(2, 3), img_dim=96, path=None, num=0):
+    h, w = figure_size
+    if split is None:
+        num_of_imgs = figure_size[0] * figure_size[1]
+        gap = len(imgs) // num_of_imgs
+        split = list(range(0, len(imgs)+1, gap))
+    figure = np.zeros((img_dim*h, img_dim*w, 3))
+    for i in range(h):
+        for j in range(w):
+            idx = i*w+j
+            if idx >= len(split)-1: break
+            digit = imgs[ split[idx] : split[idx+1] ]
+            if len(digit) == 1:
+                for k in range(3):
+                    figure[i*img_dim: (i+1)*img_dim,
+                        j*img_dim: (j+1)*img_dim, k] = digit
+            elif len(digit) == 3:
+                for k in range(3):
+                    figure[i*img_dim: (i+1)*img_dim,
+                        j*img_dim: (j+1)*img_dim, k] = digit[2-k]
+    if path is None:
+        cv2.imshow('Figure%d'%num, figure)
+        cv2.waitKey()
+    else:
+        figure *= 255
+        print(">> Saving Image at {}".format(path))
+        cv2.imwrite(path, figure)
+
 if __name__ == '__main__':
-    root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
-    root_path_test = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\eval15'
+    root_path_train = r'F:\DeepLearning\datasets\LOLdataset\our485'
+    root_path_test = r'F:\DeepLearning\datasets\LOLdataset\eval15'
+    # root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
+    # root_path_test = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\eval15'
     list_path_train = build_LOLDataset_list_txt(root_path_train)
     list_path_test = build_LOLDataset_list_txt(root_path_test)
     Batch_size = 2
     log("Buliding LOL Dataset...")
-    dst_train = LOLDataset(root_path_train, list_path_train, transform=None, crop_size=200, to_RAM=True)
-    dst_test = LOLDataset(root_path_test, list_path_test, transform=None, crop_size=200, to_RAM=True)
+    dst_train = LOLDataset(root_path_train, list_path_train, transform=None, crop_size=128, to_RAM=False)
+    dst_test = LOLDataset(root_path_test, list_path_test, transform=None, crop_size=128, to_RAM=False)
     # But when we are training a model, the mean should have another value
     trainloader = DataLoader(dst_train, batch_size = Batch_size)
     testloader = DataLoader(dst_test, batch_size=1)
     plt.ion()
     for i, data in enumerate(trainloader):
         _, imgs, name = data
-        img = torchvision.utils.make_grid(imgs).numpy()
-        img = img.astype(np.uint8) #change the dtype from float32 to uint8, because the plt.imshow() need the uint8
-        img = np.transpose(img, (1, 2, 0))#transpose the Channels*H*W to  H*W*Channels
-        #img = img[:, :, ::-1]
-        plt.imshow(img)
-        plt.show()
-        plt.pause(0.5)
+        img = imgs[0].numpy()
+        sample(imgs[0], figure_size=(1, 1), img_dim=128)
+        # img = img.astype(np.uint8) #change the dtype from float32 to uint8, because the plt.imshow() need the uint8
+        # img = np.transpose(img, (1, 2, 0))#transpose the Channels*H*W to  H*W*Channels
+        # plt.imshow(img)
+        # plt.show()
+        # plt.pause(0.5)

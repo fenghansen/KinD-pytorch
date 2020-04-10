@@ -1,12 +1,13 @@
-batch_size: 8
-epochs: 300
-steps_per_epoch: 1000
+batch_size: 10
+length: 96
+epochs: 100
+steps_per_epoch: 48
 save_per_iter: 300
 
-print_frequency: 100
-save_frequency: 100
+print_frequency: 60
+save_frequency: 60
 
 samples_dir: './samples'
 weights_dir: './checkpoints'
 
-learning_rate: 0.001
+learning_rate: 0.0001
