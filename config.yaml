@@ -1,11 +1,11 @@
 batch_size: 10
-length: 96
-epochs: 100
+length: 48
+epochs: 2000
 steps_per_epoch: 48
 save_per_iter: 300
 
-print_frequency: 60
-save_frequency: 60
+print_frequency: 49
+save_frequency: 49
 
 samples_dir: './samples'
 weights_dir: './checkpoints'
