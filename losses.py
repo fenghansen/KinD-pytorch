@@ -112,7 +112,7 @@ if __name__ == "__main__":
     from torch.utils.data import DataLoader
     from torchvision.utils import make_grid
     from matplotlib import pyplot as plt
-    root_path_train = r'F:\DeepLearning\datasets\LOLdataset\our485'
+    root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
     list_path_train = build_LOLDataset_list_txt(root_path_train)
     Batch_size = 2
     log("Buliding LOL Dataset...")
