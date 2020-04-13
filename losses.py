@@ -50,14 +50,14 @@ class Decom_Loss(nn.Module):
         super().__init__()
 
     def reflectance_similarity(self, R_low, R_high):
-        return F.mse_loss(R_low, R_high)
+        return torch.mean(torch.abs(R_low - R_high))
     
     def illumination_smoothness(self, I, L, name='_low', hook=-1):
         # L_transpose = L.permute(0, 2, 3, 1)
         # L_gray_transpose = 0.299*L[:,:,:,0] + 0.587*L[:,:,:,1] + 0.114*L[:,:,:,2]
         # L_gray = L.permute(0, 3, 1, 2)
         L_gray = 0.299*L[:,0,:,:] + 0.587*L[:,1,:,:] + 0.114*L[:,2,:,:]
-        L_gray = L_gray.unsqueeze_(dim=1)
+        L_gray = L_gray.unsqueeze(dim=1)
         I_gradient_x = gradient(I, "x")
         L_gradient_x = gradient(L_gray, "x")
         epsilon = 0.01*torch.ones_like(L_gradient_x)
@@ -69,8 +69,8 @@ class Decom_Loss(nn.Module):
         y_loss = torch.abs(torch.div(I_gradient_y, Denominator_y))
         mut_loss = torch.mean(x_loss + y_loss)
         if hook > -1:
-            feature_map_hook(I, L_gray, I_gradient_x, L_gradient_x, I_gradient_y, L_gradient_y, 
-                            x_loss, y_loss, path=f'./samples-features/ilux_smooth_{name}_epoch{hook}.png')
+            feature_map_hook(I, L_gray, epsilon, I_gradient_x+I_gradient_y, Denominator_x+Denominator_y, 
+                            x_loss+y_loss, path=f'./samples-features/ilux_smooth_{name}_epoch{hook}.png')
         return mut_loss
     
     def mutual_consistency(self, I_low, I_high, hook=-1):
@@ -84,8 +84,8 @@ class Decom_Loss(nn.Module):
         y_loss = M_gradient_y * torch.exp(-10 * M_gradient_y)
         mutual_loss = torch.mean(x_loss + y_loss) 
         if hook > -1:
-            feature_map_hook(I_low, I_high, low_gradient_x, high_gradient_x, low_gradient_y, high_gradient_y, 
-                    M_gradient_x, M_gradient_y, x_loss, y_loss, path=f'./samples-features/mutual_consist_epoch{hook}.png')
+            feature_map_hook(I_low, I_high, low_gradient_x+low_gradient_y, high_gradient_x+high_gradient_y, 
+                    M_gradient_x + M_gradient_y, x_loss+ y_loss, path=f'./samples-features/mutual_consist_epoch{hook}.png')
         return mutual_loss
 
     def reconstruction_error(self, R_low, R_high, I_low_3, I_high_3, L_low, L_high):
@@ -100,10 +100,10 @@ class Decom_Loss(nn.Module):
         recon_loss = self.reconstruction_error(R_low, R_high, I_low_3, I_high_3, L_low, L_high)
         equal_R_loss = self.reflectance_similarity(R_low, R_high)
         i_mutual_loss = self.mutual_consistency(I_low, I_high, hook=hook)
-        ilux_smooth_loss = self.illumination_smoothness(I_low, L_low, hook=hook) + \
-                    self.illumination_smoothness(I_high, L_high, name='high', hook=hook) 
+        # ilux_smooth_loss = self.illumination_smoothness(I_low, L_low, hook=hook) + \
+        #             self.illumination_smoothness(I_high, L_high, name='high', hook=hook) 
 
-        decom_loss = recon_loss + 0.009*equal_R_loss + 0.08 * ilux_smooth_loss + 0.1 * i_mutual_loss 
+        decom_loss = recon_loss + 0.01 * equal_R_loss + 0.1 * i_mutual_loss # + 0.08 * ilux_smooth_loss
 
         return decom_loss
 

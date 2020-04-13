@@ -53,7 +53,8 @@ class Decom_Trainer(BaseTrainer):
                         R_high_np = R_high.detach().cpu().numpy()[0]
                         I_low_np = I_low.detach().cpu().numpy()[0]
                         I_high_np = I_high.detach().cpu().numpy()[0]
-                        L_low_np = L_low_tensor.numpy()[0] ; L_high_np = L_high_tensor.numpy()[0]
+                        L_low_np = L_low_tensor.numpy()[0]
+                        L_high_np = L_high_tensor.numpy()[0]
                         sample_imgs = np.concatenate( (R_low_np, I_low_np, L_low_np,
                                                     R_high_np, I_high_np, L_high_np), axis=0 )
                         filepath = './samples/epoch_{}.png'.format(iter)
@@ -97,8 +98,10 @@ if __name__ == "__main__":
 
     root_path_train = r'F:\DeepLearning\datasets\LOLdataset\our485'
     root_path_test = r'F:\DeepLearning\datasets\LOLdataset\eval15'
-    list_path_train = os.path.join(root_path_train, 'pair_list.csv')
-    list_path_test = os.path.join(root_path_test, 'pair_list.csv')
+    list_path_train = build_LOLDataset_list_txt(root_path_train)
+    list_path_test = build_LOLDataset_list_txt(root_path_test)
+    # list_path_train = os.path.join(root_path_train, 'pair_list.csv')
+    # list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
     log("Buliding LOL Dataset...")
     transform = transforms.Compose([transforms.ToTensor(),
