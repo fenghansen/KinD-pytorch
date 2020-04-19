@@ -43,4 +43,10 @@ class MaxPooling2D(nn.Module):
 
 class Concat(nn.Module):
     def forward(self, x, y):
+        _, _, xh, xw = x.size()
+        _, _, yh, yw = y.size()
+        diffY = xh - yh
+        diffX = xw - yw
+        y = F.pad(y, (diffX // 2, diffX - diffX//2, 
+                      diffY // 2, diffY - diffY//2))
         return torch.cat((x, y), dim=1)
