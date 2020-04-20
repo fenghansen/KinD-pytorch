@@ -8,5 +8,4 @@ class BaseParser():
         self.parser.add_argument("--mode", default="train", choices=["train", "test"])
         self.parser.add_argument("--config", default="./config.yaml", help="path to config")
         self.parser.add_argument("--checkpoint", default=True,help="path to checkpoint to restore")
-        self.parser.add_argument("--noDecom", default=False, help="Use official Decomposition")
         return self.parser.parse_args()

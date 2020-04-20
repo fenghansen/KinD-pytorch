@@ -55,7 +55,7 @@ class Decom_Trainer(BaseTrainer):
                     self.test(iter, plot_dir='./images/samples-decom')
 
                 if iter % self.save_frequency == 0:
-                    torch.save(self.model.state_dict(), './weights/decom_net_test.pth')
+                    torch.save(self.model.state_dict(), './weights/decom_net_test2.pth')
                     log("Weight Has saved as 'decom_net.pth'")
                         
                 scheduler.step()
@@ -72,7 +72,6 @@ class Decom_Trainer(BaseTrainer):
 
     def test(self, epoch=-1, plot_dir='./images/samples-decom'):
         self.model.eval()
-        self.model.to(device=self.device)
         hook = 0
         for L_low_tensor, L_high_tensor, name in self.dataloader_test:
             L_low = L_low_tensor.to(self.device)
@@ -108,7 +107,7 @@ if __name__ == "__main__":
     args = parser.parse()
     args.checkpoint = True
     if args.checkpoint is not None:
-        pretrain = torch.load('./weights/decom_net_test.pth')
+        pretrain = torch.load('./weights/decom_net.pth')
         model.load_state_dict(pretrain)
         print('Model loaded from decom_net.pth')
 

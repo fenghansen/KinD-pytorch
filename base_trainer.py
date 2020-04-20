@@ -10,16 +10,18 @@ from torchsummary import summary
 
 class BaseTrainer:
     def __init__(self, config, dataloader, criterion, model, 
-            dataloader_test=None):
+            dataloader_test=None, extra_model=None):
         self.initialize(config)
         self.dataloader = dataloader
         self.dataloader_test = dataloader_test
         self.loss_fn = criterion
         self.model = model
+        self.extra_model = extra_model
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model.to(device=self.device)
         # faster convolutions, but more memory
-        # if self.device == 'cuda':
-        #     torch.backends.cudnn.benchmark=True
+        if self.device == 'cuda':
+            torch.backends.cudnn.benchmark=True
 
     def initialize(self, config):
         self.batch_size = config['batch_size']
@@ -31,6 +33,7 @@ class BaseTrainer:
         self.weights_dir = config['weights_dir']
         self.samples_dir = config['samples_dir']           # './logs/samples'
         self.learning_rate = config['learning_rate']
+        self.noDecom = config['noDecom']
 
     def train(self):
         print(f'Using device {self.device}')

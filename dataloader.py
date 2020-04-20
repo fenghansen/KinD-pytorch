@@ -315,9 +315,9 @@ def sample(imgs, split=None ,figure_size=(2, 3), img_dim=(600, 400), path=None, 
         cv2.waitKey()
     else:
         figure *= 255
-        filename = path.split('/')[-1]
+        filename = path.split('\\')[-1]
         if len(filename) == 0:
-            filename = path.split('\\')[-1]
+            filename = path.split('/')[-1]
         root_path = path[:-len(filename)]
         if not os.path.exists(root_path):
             os.makedirs(root_path)
@@ -325,48 +325,41 @@ def sample(imgs, split=None ,figure_size=(2, 3), img_dim=(600, 400), path=None, 
         cv2.imwrite(path, figure)
 
 if __name__ == '__main__':
-    root_path_train = r'H:\datasets\Low-Light Dataset\LOLdataset_decom\our485'
-    root_path_test = r'H:\datasets\Low-Light Dataset\LOLdataset_decom\eval15'
-    list_path_train = build_LOLDataset_Decom_list_txt(root_path_train)
-    list_path_test = build_LOLDataset_Decom_list_txt(root_path_test)
-    Batch_size = 2
-    log("Buliding LOL Dataset...")
-    dst_train = LOLDataset_Decom(root_path_train, list_path_train, transform=None, crop_size=128, to_RAM=True)
-    dst_test = LOLDataset_Decom(root_path_test, list_path_test, transform=None, crop_size=128, to_RAM=False)
-    # But when we are training a model, the mean should have another value
-    trainloader = DataLoader(dst_train, batch_size = Batch_size)
-    testloader = DataLoader(dst_test, batch_size=1)
-    plt.ion()
-    for i, data in enumerate(trainloader):
-        _, _, _, imgs, name = data
-        log(name)
-        img = imgs[0].numpy()
-        sample(imgs[0], figure_size=(1, 1), img_dim=128)
-        # img = img.astype(np.uint8) #change the dtype from float32 to uint8, because the plt.imshow() need the uint8
-        # img = np.transpose(img, (1, 2, 0))#transpose the Channels*H*W to  H*W*Channels
-        # plt.imshow(img)
-        # plt.show()
-        # plt.pause(0.5)
-    # root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
-    # root_path_test = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\eval15'
-    # # root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
-    # # root_path_test = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\eval15'
-    # list_path_train = build_LOLDataset_list_txt(root_path_train)
-    # list_path_test = build_LOLDataset_list_txt(root_path_test)
+    # noDecom Dataloader Test
+    # root_path_train = r'H:\datasets\Low-Light Dataset\LOLdataset_decom\our485'
+    # root_path_test = r'H:\datasets\Low-Light Dataset\LOLdataset_decom\eval15'
+    # list_path_train = build_LOLDataset_Decom_list_txt(root_path_train)
+    # list_path_test = build_LOLDataset_Decom_list_txt(root_path_test)
     # Batch_size = 2
     # log("Buliding LOL Dataset...")
-    # dst_train = LOLDataset(root_path_train, list_path_train, transform=None, crop_size=128, to_RAM=False)
-    # dst_test = LOLDataset(root_path_test, list_path_test, transform=None, crop_size=128, to_RAM=False)
+    # dst_train = LOLDataset_Decom(root_path_train, list_path_train, transform=None, crop_size=128, to_RAM=True)
+    # dst_test = LOLDataset_Decom(root_path_test, list_path_test, transform=None, crop_size=128, to_RAM=False)
     # # But when we are training a model, the mean should have another value
     # trainloader = DataLoader(dst_train, batch_size = Batch_size)
     # testloader = DataLoader(dst_test, batch_size=1)
     # plt.ion()
     # for i, data in enumerate(trainloader):
-    #     _, imgs, name = data
+    #     _, _, _, imgs, name = data
+    #     log(name)
     #     img = imgs[0].numpy()
     #     sample(imgs[0], figure_size=(1, 1), img_dim=128)
-    #     # img = img.astype(np.uint8) #change the dtype from float32 to uint8, because the plt.imshow() need the uint8
-    #     # img = np.transpose(img, (1, 2, 0))#transpose the Channels*H*W to  H*W*Channels
-    #     # plt.imshow(img)
-    #     # plt.show()
-    #     # plt.pause(0.5)
+
+    # Dataloader Test
+    root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
+    root_path_test = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\eval15'
+    # root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
+    # root_path_test = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\eval15'
+    list_path_train = build_LOLDataset_list_txt(root_path_train)
+    list_path_test = build_LOLDataset_list_txt(root_path_test)
+    Batch_size = 2
+    log("Buliding LOL Dataset...")
+    dst_train = LOLDataset(root_path_train, list_path_train, transform=None, crop_size=128, to_RAM=False)
+    dst_test = LOLDataset(root_path_test, list_path_test, transform=None, crop_size=128, to_RAM=False)
+    # But when we are training a model, the mean should have another value
+    trainloader = DataLoader(dst_train, batch_size = Batch_size)
+    testloader = DataLoader(dst_test, batch_size=1)
+    plt.ion()
+    for i, data in enumerate(trainloader):
+        _, imgs, name = data
+        img = imgs[0].numpy()
+        sample(imgs[0], figure_size=(1, 1), img_dim=128)

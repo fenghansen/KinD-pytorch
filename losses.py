@@ -31,8 +31,10 @@ def gradient(maps, direction, device='cuda', kernel='sobel'):
     channels = maps.size()[1]
     if kernel == 'robert':
         smooth_kernel_x = Robert.expand(channels, channels, 2, 2)
+        maps = F.pad(maps, (0, 0, 1, 1))
     elif kernel == 'sobel':
         smooth_kernel_x = Sobel.expand(channels, channels, 3, 3)
+        maps = F.pad(maps, (1, 1, 1, 1))
     smooth_kernel_y = smooth_kernel_x.permute(0, 1, 3, 2)
     if direction == "x":
         kernel = smooth_kernel_x
@@ -40,7 +42,7 @@ def gradient(maps, direction, device='cuda', kernel='sobel'):
         kernel = smooth_kernel_y
     kernel = kernel.to(device=device)
     # kernel size is (2, 2) so need pad bottom and right side
-    gradient_orig = torch.abs(F.conv2d(maps, weight=kernel, padding=1))
+    gradient_orig = torch.abs(F.conv2d(maps, weight=kernel, padding=0))
     grad_min = torch.min(gradient_orig)
     grad_max = torch.max(gradient_orig)
     grad_norm = torch.div((gradient_orig - grad_min), (grad_max - grad_min + 0.0001))
@@ -51,8 +53,10 @@ def gradient_no_abs(maps, direction, device='cuda', kernel='sobel'):
     channels = maps.size()[1]
     if kernel == 'robert':
         smooth_kernel_x = Robert.expand(channels, channels, 2, 2)
+        maps = F.pad(maps, (0, 0, 1, 1))
     elif kernel == 'sobel':
         smooth_kernel_x = Sobel.expand(channels, channels, 3, 3)
+        maps = F.pad(maps, (1, 1, 1, 1))
     smooth_kernel_y = smooth_kernel_x.permute(0, 1, 3, 2)
     if direction == "x":
         kernel = smooth_kernel_x
@@ -60,7 +64,7 @@ def gradient_no_abs(maps, direction, device='cuda', kernel='sobel'):
         kernel = smooth_kernel_y
     kernel = kernel.to(device=device)
     # kernel size is (2, 2) so need pad bottom and right side
-    gradient_orig = torch.abs(F.conv2d(maps, weight=kernel, padding=1))
+    gradient_orig = torch.abs(F.conv2d(maps, weight=kernel, padding=0))
     grad_min = torch.min(gradient_orig)
     grad_max = torch.max(gradient_orig)
     grad_norm = torch.div((gradient_orig - grad_min), (grad_max - grad_min + 0.0001))
@@ -124,10 +128,10 @@ class Decom_Loss(nn.Module):
         recon_loss = self.reconstruction_error(R_low, R_high, I_low_3, I_high_3, L_low, L_high)
         equal_R_loss = self.reflectance_similarity(R_low, R_high)
         i_mutual_loss = self.mutual_consistency(I_low, I_high, hook=hook)
-        ilux_smooth_loss = self.illumination_smoothness(I_low, L_low, hook=hook) + \
-                    self.illumination_smoothness(I_high, L_high, name='high', hook=hook) 
+        # ilux_smooth_loss = self.illumination_smoothness(I_low, L_low, hook=hook) + \
+        #             self.illumination_smoothness(I_high, L_high, name='high', hook=hook) 
 
-        decom_loss = recon_loss + 0.01 * equal_R_loss + 0.1 * i_mutual_loss + 0.08 * ilux_smooth_loss
+        decom_loss = recon_loss + 0.01 * equal_R_loss + 0.1 * i_mutual_loss #+ 0.08 * ilux_smooth_loss
 
         return decom_loss
 
@@ -137,14 +141,14 @@ class Illum_Loss(nn.Module):
         super().__init__()
     
     def grad_loss(self, low, high, hook=-1):
-        x_loss = F.mse_loss(gradient_no_abs(low, 'x'), gradient_no_abs(high, 'x'))
-        y_loss = F.mse_loss(gradient_no_abs(low, 'y'), gradient_no_abs(high, 'y'))
+        x_loss = F.l1_loss(gradient_no_abs(low, 'x'), gradient_no_abs(high, 'x'))
+        y_loss = F.l1_loss(gradient_no_abs(low, 'y'), gradient_no_abs(high, 'y'))
         grad_loss_all = x_loss + y_loss
         return grad_loss_all
 
     def forward(self, I_low, I_high, hook=-1):
         loss_grad = self.grad_loss(I_low, I_high, hook=hook)
-        loss_recon = F.mse_loss(I_low, I_high)
+        loss_recon = F.l1_loss(I_low, I_high)
         loss_adjust =  loss_recon + loss_grad
         return loss_adjust
 
@@ -161,10 +165,10 @@ class Restore_Loss(nn.Module):
         return grad_loss_all
 
     def forward(self, R_low, R_high, hook=-1):
-        loss_grad = self.grad_loss(R_low, R_high, hook=hook)
+        # loss_grad = self.grad_loss(R_low, R_high, hook=hook)
         loss_recon = F.mse_loss(R_low, R_high)
         loss_ssim = 1-self.ssim_loss(R_low, R_high)
-        loss_restore = loss_recon + loss_ssim + loss_grad
+        loss_restore = loss_recon + loss_ssim #+ loss_grad
         return loss_restore
 
 
