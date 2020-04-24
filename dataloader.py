@@ -44,8 +44,35 @@ def data_augmentation(image, mode):
         image = np.rot90(image, k=3)
         return np.flipud(image)
 
+# 作为装饰器函数
+def no_grad(fn):
+    with torch.no_grad():
+        def transfer(*args,**kwargs):
+            fn(*args,**kwargs)
+        return fn
+
+
+class CustomDataset(Dataset):
+    def __init__(self, datapath):
+        super().__init__()
+        self.datapath = datapath
+        self.img_path = [os.path.join(datapath, f) for f in os.listdir(datapath) if
+                        any(filetype in f.lower() for filetype in ['jpeg', 'png', 'jpg', 'bmp'])]
+        self.name = [f.split(".")[0] for f in os.listdir(datapath) if any(filetype in 
+                    f.lower() for filetype in ['jpeg', 'png', 'jpg', 'bmp'])]
+    
+    def __len__(self):
+        return len(self.img_path)
+    
+    def __getitem__(self, idx):
+        datafiles = self.img_path[idx]
+        img = Image.open(datafiles).convert('RGB')
+        img = np.asarray(img, np.float32).transpose((2,0,1)) / 255.
+        return img, self.name[idx]
+
+
 class LOLDataset(Dataset):
-    def __init__(self, root, list_path, transform, crop_size=256, to_RAM=False, training=True):
+    def __init__(self, root, list_path, crop_size=256, to_RAM=False, training=True):
         super(LOLDataset,self).__init__()
         self.training = training
         self.to_RAM = to_RAM
@@ -120,7 +147,7 @@ class LOLDataset(Dataset):
 
 
 class LOLDataset_Decom(Dataset):
-    def __init__(self, root, list_path, transform, 
+    def __init__(self, root, list_path, 
                 crop_size=256, to_RAM=False, training=True):
         super().__init__()
         self.training = training
@@ -315,9 +342,12 @@ def sample(imgs, split=None ,figure_size=(2, 3), img_dim=(600, 400), path=None, 
         cv2.waitKey()
     else:
         figure *= 255
-        filename = path.split('\\')[-1]
-        if len(filename) == 0:
-            filename = path.split('/')[-1]
+        filename1 = path.split('\\')[-1]
+        filename2 = path.split('/')[-1]
+        if len(filename1) < len(filename2):
+            filename = filename1
+        else:
+            filename = filename2
         root_path = path[:-len(filename)]
         if not os.path.exists(root_path):
             os.makedirs(root_path)
@@ -332,8 +362,8 @@ if __name__ == '__main__':
     # list_path_test = build_LOLDataset_Decom_list_txt(root_path_test)
     # Batch_size = 2
     # log("Buliding LOL Dataset...")
-    # dst_train = LOLDataset_Decom(root_path_train, list_path_train, transform=None, crop_size=128, to_RAM=True)
-    # dst_test = LOLDataset_Decom(root_path_test, list_path_test, transform=None, crop_size=128, to_RAM=False)
+    # dst_train = LOLDataset_Decom(root_path_train, list_path_train, crop_size=128, to_RAM=True)
+    # dst_test = LOLDataset_Decom(root_path_test, list_path_test, crop_size=128, to_RAM=False)
     # # But when we are training a model, the mean should have another value
     # trainloader = DataLoader(dst_train, batch_size = Batch_size)
     # testloader = DataLoader(dst_test, batch_size=1)
@@ -353,8 +383,8 @@ if __name__ == '__main__':
     list_path_test = build_LOLDataset_list_txt(root_path_test)
     Batch_size = 2
     log("Buliding LOL Dataset...")
-    dst_train = LOLDataset(root_path_train, list_path_train, transform=None, crop_size=128, to_RAM=False)
-    dst_test = LOLDataset(root_path_test, list_path_test, transform=None, crop_size=128, to_RAM=False)
+    dst_train = LOLDataset(root_path_train, list_path_train, crop_size=128, to_RAM=False)
+    dst_test = LOLDataset(root_path_test, list_path_test, crop_size=128, to_RAM=False)
     # But when we are training a model, the mean should have another value
     trainloader = DataLoader(dst_train, batch_size = Batch_size)
     testloader = DataLoader(dst_test, batch_size=1)

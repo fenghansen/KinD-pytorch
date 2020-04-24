@@ -1,5 +1,5 @@
-batch_size: 8
-length: 256
+batch_size: 4
+length: 384
 epochs: 101
 steps_per_epoch: 128
 

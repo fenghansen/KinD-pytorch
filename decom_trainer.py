@@ -55,7 +55,7 @@ class Decom_Trainer(BaseTrainer):
                     self.test(iter, plot_dir='./images/samples-decom')
 
                 if iter % self.save_frequency == 0:
-                    torch.save(self.model.state_dict(), './weights/decom_net_test2.pth')
+                    torch.save(self.model.state_dict(), './weights/decom_net_test3.pth')
                     log("Weight Has saved as 'decom_net.pth'")
                         
                 scheduler.step()
@@ -70,6 +70,7 @@ class Decom_Trainer(BaseTrainer):
             except SystemExit:
                 os._exit(0)
 
+    @no_grad
     def test(self, epoch=-1, plot_dir='./images/samples-decom'):
         self.model.eval()
         hook = 0
@@ -122,25 +123,24 @@ if __name__ == "__main__":
     # list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
     log("Buliding LOL Dataset...")
-    transform = transforms.Compose([transforms.ToTensor(),
-                                    ])
-    dst_train = LOLDataset(root_path_train, list_path_train, transform, 
+    # transform = transforms.Compose([transforms.ToTensor(),])
+    dst_train = LOLDataset(root_path_train, list_path_train,
                             crop_size=config['length'], to_RAM=True)
-    dst_test = LOLDataset(root_path_test, list_path_test, transform, 
+    dst_test = LOLDataset(root_path_test, list_path_test,
                             crop_size=config['length'], to_RAM=True, training=False)
 
     train_loader = DataLoader(dst_train, batch_size = config['batch_size'], shuffle=True)
     test_loader = DataLoader(dst_test, batch_size=1)
 
-    if args.noDecom is True:
-        root_path_valid = r'H:\datasets\Low-Light Dataset\LOLdataset_decom\our485'
-        list_path_valid = os.path.join(root_path_test, 'pair_list.csv')
+    # if args.noDecom is True:
+    #     root_path_valid = r'H:\datasets\Low-Light Dataset\LOLdataset_decom\our485'
+    #     list_path_valid = os.path.join(root_path_test, 'pair_list.csv')
 
-        log("Buliding LOL Dataset (noDecom)...")
-        transform = transforms.Compose([transforms.ToTensor()])
-        dst_valid = LOLDataset_Decom(root_path_test, list_path_test, transform, 
-                                crop_size=config['length'], to_RAM=True, training=False)
-        valid_loader = DataLoader(dst_train, batch_size = config['batch_size'], shuffle=True)
+    #     log("Buliding LOL Dataset (noDecom)...")
+    #     # transform = transforms.Compose([transforms.ToTensor()])
+    #     dst_valid = LOLDataset_Decom(root_path_test, list_path_test,
+    #                             crop_size=config['length'], to_RAM=True, training=False)
+    #     valid_loader = DataLoader(dst_train, batch_size = config['batch_size'], shuffle=True)
 
     trainer = Decom_Trainer(config, train_loader, criterion, model, dataloader_test=test_loader)
     # --config ./config/config.yaml

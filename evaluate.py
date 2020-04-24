@@ -17,7 +17,8 @@ from base_parser import BaseParser
 from dataloader import *
 
 class KinD_noDecom_Trainer(BaseTrainer):
-    def test(self, epoch=-1, plot_dir='./images/samples-KinD2'):
+    @no_grad
+    def test(self, epoch=-1, plot_dir='./images/samples-KinD'):
         self.model.eval()
         self.model.to(device=self.device)
         if 'decom_net' in model._modules:
@@ -33,16 +34,12 @@ class KinD_noDecom_Trainer(BaseTrainer):
                 output_low = I_low_3 * R_low
                 output_high = I_high_3 * R_high
 
-                # while True:
-                #     b = float(input('请输入偏置：'))
-                #     if b <= 0: break
-                #     w = float(input('请输入斜率：'))
-                b = 0.6; w = 0.5
-                
+                b = 0.7; w=0.5
                 bright_low = torch.mean(I_low)
+                # bright_high = torch.mean(I_high)
                 bright_high = torch.ones_like(bright_low) * b + bright_low * w
                 ratio = torch.div(bright_high, bright_low)
-                print(bright_high, ratio)
+                log(f"Brightness: {bright_high}\tIllumation Magnification: {ratio.item()}")
                 # ratio_map = torch.ones_like(I_low) * ratio
                 
                 R_final, I_final, output_final = self.model(L_low, ratio)
@@ -81,9 +78,9 @@ class KinD_noDecom_Trainer(BaseTrainer):
                 # while True:
                 #     b = float(input('请输入增强水平：'))
                 #     if b <= 0: break
-                b = 1
+                b = 0.6; w = 0.5
                 bright_low = torch.mean(I_low)
-                bright_high = torch.mean(I_high) * b
+                bright_high = torch.ones_like(bright_low) * b + bright_low * w
                 ratio = torch.div(bright_high, bright_low)
                 print(bright_high, ratio)
                 # ratio_map = torch.ones_like(I_low) * ratio
@@ -122,7 +119,7 @@ if __name__ == "__main__":
 
     if args.checkpoint is not None:
         if config['noDecom'] is False:
-            pretrain_decom = torch.load('./weights/decom_net_test2.pth')
+            pretrain_decom = torch.load('./weights/decom_net.pth')
             model.decom_net.load_state_dict(pretrain_decom)
             log('Model loaded from decom_net.pth')
         pretrain_resotre = torch.load('./weights/restore_net.pth')
@@ -137,20 +134,22 @@ if __name__ == "__main__":
         list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
         log("Buliding LOL Dataset (noDecom)...")
-        transform = transforms.Compose([transforms.ToTensor()])
-        dst_test = LOLDataset_Decom(root_path_test, list_path_test, transform, 
+        # transform = transforms.Compose([transforms.ToTensor()])
+        dst_test = LOLDataset_Decom(root_path_test, list_path_test,
                                 crop_size=config['length'], to_RAM=True, training=False)
     else:
         root_path_test = r'C:\DeepLearning\KinD_plus-master\LOLdataset\eval15'
         list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
         log("Buliding LOL Dataset...")
-        transform = transforms.Compose([transforms.ToTensor()])
-        dst_test = LOLDataset(root_path_test, list_path_test, transform, 
+        # transform = transforms.Compose([transforms.ToTensor()])
+        dst_test = LOLDataset(root_path_test, list_path_test,
                                 crop_size=config['length'], to_RAM=True, training=False)
 
     test_loader = DataLoader(dst_test, batch_size=1)
 
     KinD = KinD_noDecom_Trainer(config, None, criterion, model, dataloader_test=test_loader)
-    # --config ./config/config.yaml
-    KinD.test()
+    
+    # Please change your output direction here
+    output_dir = './images/samples-KinD'
+    KinD.test(plot_dir=output_dir)

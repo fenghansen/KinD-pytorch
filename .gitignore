@@ -1,9 +1,9 @@
 # custom ignore
 *.h5
 *.jpg
-*.png
-*.pth
 *.zip
+weights/
+images/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

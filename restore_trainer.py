@@ -102,6 +102,7 @@ class Restore_Trainer(BaseTrainer):
             except SystemExit:
                 os._exit(0)
 
+    @no_grad
     def test(self, epoch=-1, plot_dir='./images/samples-restore'):
         self.model.eval()
         if self.noDecom:
@@ -126,9 +127,8 @@ class Restore_Trainer(BaseTrainer):
                 L_low = L_low_tensor.to(self.device)
                 L_high = L_high_tensor.to(self.device)
 
-                with torch.no_grad():
-                    R_low, I_low = self.decom_net(L_low)
-                    R_high, I_high = self.decom_net(L_high)
+                R_low, I_low = self.decom_net(L_low)
+                R_high, I_high = self.decom_net(L_high)
 
                 R_restore = self.model(R_low, I_low)
             
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
     if args.checkpoint is not None:
         if config['noDecom'] is False:
-            pretrain_decom = torch.load('./weights/decom_net_test2.pth')
+            pretrain_decom = torch.load('./weights/decom_net_test3.pth')
             decom_net.load_state_dict(pretrain_decom)
             log('DecomNet loaded from decom_net.pth')
         pretrain = torch.load('./weights/restore_net.pth')
@@ -174,11 +174,10 @@ if __name__ == "__main__":
         # list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
         log("Buliding LOL Dataset...")
-        transform = transforms.Compose([transforms.ToTensor(),
-                                        ])
-        dst_train = LOLDataset_Decom(root_path_train, list_path_train, transform, 
+        # transform = transforms.Compose([transforms.ToTensor()])
+        dst_train = LOLDataset_Decom(root_path_train, list_path_train,
                                 crop_size=config['length'], to_RAM=True)
-        dst_test = LOLDataset_Decom(root_path_test, list_path_test, transform, 
+        dst_test = LOLDataset_Decom(root_path_test, list_path_test,
                                 crop_size=config['length'], to_RAM=True, training=False)
 
         train_loader = DataLoader(dst_train, batch_size = config['batch_size'], shuffle=True)
@@ -193,11 +192,10 @@ if __name__ == "__main__":
         # list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
         log("Buliding LOL Dataset...")
-        transform = transforms.Compose([transforms.ToTensor(),
-                                        ])
-        dst_train = LOLDataset(root_path_train, list_path_train, transform, 
+        # transform = transforms.Compose([transforms.ToTensor()])
+        dst_train = LOLDataset(root_path_train, list_path_train,
                                 crop_size=config['length'], to_RAM=True)
-        dst_test = LOLDataset(root_path_test, list_path_test, transform, 
+        dst_test = LOLDataset(root_path_test, list_path_test,
                                 crop_size=config['length'], to_RAM=True, training=False)
 
         train_loader = DataLoader(dst_train, batch_size = config['batch_size'], shuffle=True)

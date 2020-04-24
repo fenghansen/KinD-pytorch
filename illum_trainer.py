@@ -32,7 +32,7 @@ class Illum_Trainer(BaseTrainer):
         # summary(self.model, input_size=[(1, 384, 384), (1,)], batch_size=4)
 
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.977237)
+        scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.997)
         try:
             for iter in range(self.epochs):
                 epoch_loss = 0
@@ -115,22 +115,24 @@ class Illum_Trainer(BaseTrainer):
             except SystemExit:
                 os._exit(0)
 
+    @no_grad
     def test(self, epoch=-1, plot_dir='./images/samples-illum'):
         self.model.eval()
         if self.noDecom:
             for R_low_tensor, I_low_tensor, R_high_tensor, I_high_tensor, name in self.dataloader_test:
                 I_low = I_low_tensor.to(self.device)
                 I_high = I_high_tensor.to(self.device)
-                with torch.no_grad():
-                    ratio_high2low = torch.mean(torch.div((I_low + 0.0001), (I_high + 0.0001)))
-                    ratio_low2high = torch.mean(torch.div((I_high + 0.0001), (I_low + 0.0001)))
-                    print(ratio_low2high)
-                    # 采用粗略的亮度水平估计
-                    bright_low = torch.mean(I_low)
-                    bright_high = torch.ones_like(bright_low) * 0.3 + bright_low * 0.55
-                    ratio_high2low = torch.div(bright_low, bright_high)
-                    ratio_low2high = torch.div(bright_high, bright_low)
-                    print(ratio_low2high)
+
+                ratio_high2low = torch.mean(torch.div((I_low + 0.0001), (I_high + 0.0001)))
+                ratio_low2high = torch.mean(torch.div((I_high + 0.0001), (I_low + 0.0001)))
+                print(ratio_low2high)
+                # 采用粗略的亮度水平估计
+                bright_low = torch.mean(I_low)
+                bright_high = torch.ones_like(bright_low) * 0.3 + bright_low * 0.55
+                ratio_high2low = torch.div(bright_low, bright_high)
+                ratio_low2high = torch.div(bright_high, bright_low)
+                print(ratio_low2high)
+
                 I_low2high_map = self.model(I_low, ratio_low2high)
                 I_high2low_map = self.model(I_high, ratio_high2low)
 
@@ -150,14 +152,14 @@ class Illum_Trainer(BaseTrainer):
                 L_low = L_low_tensor.to(self.device)
                 L_high = L_high_tensor.to(self.device)
 
-                with torch.no_grad():
-                    R_low, I_low = self.decom_net(L_low)
-                    R_high, I_high = self.decom_net(L_high)
-                    bright_low = torch.mean(I_low)
-                    bright_high = torch.mean(I_high)
-                    ratio_high2low = torch.div(bright_low, bright_high)
-                    ratio_low2high = torch.div(bright_high, bright_low)
-                    print(ratio_low2high)
+                R_low, I_low = self.decom_net(L_low)
+                R_high, I_high = self.decom_net(L_high)
+                bright_low = torch.mean(I_low)
+                bright_high = torch.mean(I_high)
+                ratio_high2low = torch.div(bright_low, bright_high)
+                ratio_low2high = torch.div(bright_high, bright_low)
+                print(ratio_low2high)
+
                 I_low2high_map = self.model(I_low, ratio_low2high)
                 I_high2low_map = self.model(I_high, ratio_high2low)
 
@@ -187,7 +189,7 @@ if __name__ == "__main__":
     args.checkpoint = True
     if args.checkpoint is not None:
         if config['noDecom'] is False:
-            pretrain_decom = torch.load('./weights/decom_net_test2.pth')
+            pretrain_decom = torch.load('./weights/decom_net_test3.pth')
             decom_net.load_state_dict(pretrain_decom)
             log('DecomNet loaded from decom_net.pth')
         pretrain = torch.load('./weights/illum_net.pth')
@@ -203,11 +205,10 @@ if __name__ == "__main__":
         # list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
         log("Buliding LOL Dataset...")
-        transform = transforms.Compose([transforms.ToTensor(),
-                                        ])
-        dst_train = LOLDataset_Decom(root_path_train, list_path_train, transform, 
+        # transform = transforms.Compose([transforms.ToTensor()])
+        dst_train = LOLDataset_Decom(root_path_train, list_path_train,
                                 crop_size=config['length'], to_RAM=True)
-        dst_test = LOLDataset_Decom(root_path_test, list_path_test, transform, 
+        dst_test = LOLDataset_Decom(root_path_test, list_path_test,
                                 crop_size=config['length'], to_RAM=True, training=False)
 
         train_loader = DataLoader(dst_train, batch_size = config['batch_size'], shuffle=True)
@@ -222,11 +223,10 @@ if __name__ == "__main__":
         # list_path_test = os.path.join(root_path_test, 'pair_list.csv')
 
         log("Buliding LOL Dataset...")
-        transform = transforms.Compose([transforms.ToTensor(),
-                                        ])
-        dst_train = LOLDataset(root_path_train, list_path_train, transform, 
+        # transform = transforms.Compose([transforms.ToTensor()])
+        dst_train = LOLDataset(root_path_train, list_path_train,
                                 crop_size=config['length'], to_RAM=True)
-        dst_test = LOLDataset(root_path_test, list_path_test, transform, 
+        dst_test = LOLDataset(root_path_test, list_path_test,
                                 crop_size=config['length'], to_RAM=True, training=False)
 
         train_loader = DataLoader(dst_train, batch_size = config['batch_size'], shuffle=True)
