@@ -32,7 +32,7 @@ class Illum_Trainer(BaseTrainer):
         # summary(self.model, input_size=[(1, 384, 384), (1,)], batch_size=4)
 
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.997)
+        scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.99426)
         try:
             for iter in range(self.epochs):
                 epoch_loss = 0
@@ -189,11 +189,9 @@ if __name__ == "__main__":
     args.checkpoint = True
     if args.checkpoint is not None:
         if config['noDecom'] is False:
-            pretrain_decom = torch.load('./weights/decom_net_test3.pth')
-            decom_net.load_state_dict(pretrain_decom)
+            decom_net = load_weights(decom_net, path='./weights/decom_net.pth')
             log('DecomNet loaded from decom_net.pth')
-        pretrain = torch.load('./weights/illum_net.pth')
-        model.load_state_dict(pretrain)
+        model = load_weights(model, path='./weights/illum_net.pth')
         log('Model loaded from illum_net.pth')
 
     if config['noDecom'] is True:

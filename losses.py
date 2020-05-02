@@ -128,10 +128,10 @@ class Decom_Loss(nn.Module):
         recon_loss = self.reconstruction_error(R_low, R_high, I_low_3, I_high_3, L_low, L_high)
         equal_R_loss = self.reflectance_similarity(R_low, R_high)
         i_mutual_loss = self.mutual_consistency(I_low, I_high, hook=hook)
-        # ilux_smooth_loss = self.illumination_smoothness(I_low, L_low, hook=hook) + \
-        #             self.illumination_smoothness(I_high, L_high, name='high', hook=hook) 
+        ilux_smooth_loss = self.illumination_smoothness(I_low, L_low, hook=hook) + \
+                    self.illumination_smoothness(I_high, L_high, name='high', hook=hook) 
 
-        decom_loss = recon_loss + 0.01 * equal_R_loss + 0.1 * i_mutual_loss #+ 0.08 * ilux_smooth_loss
+        decom_loss = recon_loss + 0.009 * equal_R_loss + 0.2 * i_mutual_loss + 0.15 * ilux_smooth_loss
 
         return decom_loss
 
@@ -152,6 +152,27 @@ class Illum_Loss(nn.Module):
         loss_adjust =  loss_recon + loss_grad
         return loss_adjust
 
+class Illum_Custom_Loss(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def grad_loss(self, low, high):
+        x_loss = F.l1_loss(gradient_no_abs(low, 'x'), gradient_no_abs(high, 'x'))
+        y_loss = F.l1_loss(gradient_no_abs(low, 'y'), gradient_no_abs(high, 'y'))
+        grad_loss_all = x_loss + y_loss
+        return grad_loss_all
+
+    def gamma_loss(self, I_standard, I_high):
+        loss = F.l1_loss(I_high, I_standard)
+        return loss
+
+    def forward(self, I_low, I_high, I_standard):
+        loss_gamma = self.gamma_loss(I_standard, I_high)
+        loss_grad = self.grad_loss(I_low, I_high)
+        loss_recon = F.l1_loss(I_low, I_high)
+        loss_adjust = loss_gamma + loss_recon + loss_grad
+        return loss_adjust
+
 
 class Restore_Loss(nn.Module):
     def __init__(self):
@@ -166,7 +187,7 @@ class Restore_Loss(nn.Module):
 
     def forward(self, R_low, R_high, hook=-1):
         # loss_grad = self.grad_loss(R_low, R_high, hook=hook)
-        loss_recon = F.mse_loss(R_low, R_high)
+        loss_recon = F.l1_loss(R_low, R_high)
         loss_ssim = 1-self.ssim_loss(R_low, R_high)
         loss_restore = loss_recon + loss_ssim #+ loss_grad
         return loss_restore
@@ -179,13 +200,13 @@ if __name__ == "__main__":
     from matplotlib import pyplot as plt
     root_path_train = r'H:\datasets\Low-Light Dataset\KinD++\LOLdataset\our485'
     list_path_train = build_LOLDataset_list_txt(root_path_train)
-    Batch_size = 2
+    Batch_size = 1
     log("Buliding LOL Dataset...")
-    dst_train = LOLDataset(root_path_train, list_path_train, transform=None, crop_size=400, to_RAM=True)
+    dst_test = LOLDataset(root_path_train, list_path_train, to_RAM=True, training=False)
     # But when we are training a model, the mean should have another value
-    trainloader = DataLoader(dst_train, batch_size = Batch_size)
-    for i, data in enumerate(trainloader):
-        _, L_high, name = data
+    testloader = DataLoader(dst_test, batch_size = Batch_size)
+    for i, data in enumerate(testloader):
+        L_low, L_high, name = data
         L_gradient_x = gradient_no_abs(L_high, "x", device='cpu', kernel='sobel')
         epsilon = 0.01*torch.ones_like(L_gradient_x)
         Denominator_x = torch.max(L_gradient_x, epsilon)

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from base_layers import *
 
 class DecomNet(nn.Module):
@@ -74,6 +75,173 @@ class IllumNet(nn.Module):
         I_out = self.I_out(conv_i4)
 
         return I_out
+
+
+class IllumNet_Custom(nn.Module):
+    def __init__(self, filters=16, activation='lrelu', device='cuda'):
+        super().__init__()
+        self.concat_input = Concat()
+        # Parameter
+        self.Gauss = torch.as_tensor(
+                        np.array([[0.0947416, 0.118318, 0.0947416],
+                                [ 0.118318, 0.147761, 0.118318],
+                                [0.0947416, 0.118318, 0.0947416]]).astype(np.float32)
+                        )
+        self.Gauss_kernel = self.Gauss.expand(1, 1, 3, 3).to(device)
+        self.w = nn.Parameter(torch.FloatTensor(1), requires_grad=True).to(device).data.fill_(0.72)
+        self.sigma = nn.Parameter(torch.FloatTensor(1), requires_grad=True).to(device).data.fill_(2.0)
+
+
+        # bottom path build Illumination map
+        self.conv_input = Conv2D(2, filters)
+        self.res_block = nn.Sequential(
+            ResConv(filters, filters),
+            ResConv(filters, filters),
+            ResConv(filters, filters)
+        )
+        # self.down1 = MaxPooling2D()
+        # self.conv_2 = Conv2D(filters, filters*2)
+        # self.down2 = MaxPooling2D()
+        # self.conv_3 = Conv2D(filters*2, filters*4)
+        # self.down3 = MaxPooling2D()
+        # self.conv_4 = Conv2D(filters*4, filters*8)
+
+        # self.d = nn.Dropout2d(0.5)
+
+        # self.deconv_3 = ConvTranspose2D(filters*8, filters*4)
+        # self.concat3 = Concat()
+        # self.cbam3 = CBAM(filters*8)
+        # self.deconv_2 = ConvTranspose2D(filters*8, filters*2)
+        # self.concat2 = Concat()
+        # self.cbam2 = CBAM(filters*4)
+        # self.deconv_1 = ConvTranspose2D(filters*4, filters*1)
+        # self.concat1 = Concat()
+        # self.cbam1 = CBAM(filters*2)
+        self.conv_out = nn.Conv2d(filters, 1, kernel_size=3, padding=1)
+
+        self.I_out = nn.Sigmoid()
+
+    def standard_illum_map(self, I, ratio=1, blur=False):
+        self.w.clamp_(0.01, 0.99)
+        self.sigma.clamp_(0.1, 10)
+        # if blur: # low light image have much noisy 
+        #     I = torch.nn.functional.conv2d(I, weight=self.Gauss_kernel, padding=1)
+        I = torch.log(I + 1.)
+        I_mean = torch.mean(I, dim=[2, 3], keepdim=True)
+        I_std = torch.std(I, dim=[2, 3], keepdim=True)
+        I_min = I_mean - self.sigma * I_std
+        I_max = I_mean + self.sigma * I_std
+        I_range = I_max - I_min
+        I_out = torch.clamp((I - I_min) / I_range, min=0.0, max=1.0)
+        # Transfer to gamma correction, center intensity is w
+        I_out = I_out ** (-1.442695 * torch.log(self.w))
+        return I_out
+
+    def set_parameter(self, w=None):
+        if w is None:
+            self.w.requires_grad = True
+        else:
+            self.w.data.fill_(w)
+            self.w.requires_grad = False
+    
+    def get_parameter(self):
+        if self.w.device.type == 'cuda':
+            w = self.w.detach().cpu().numpy()
+            sigma = self.sigma.detach().cpu().numpy()
+        else:
+            w = self.w.numpy()
+            sigma = self.sigma.numpy()
+        return w, sigma
+
+    def forward(self, I, ratio):
+        I_standard = self.standard_illum_map(I, ratio)
+        concat_input = torch.cat([I, I_standard], dim=1)
+        # build Illumination map
+        conv_input = self.conv_input(concat_input)
+        res_block = self.res_block(conv_input)
+        # down1 = self.down1(conv_1)
+        # conv_2 = self.conv_2(down1)
+        # down2 = self.down2(conv_2)
+        # conv_3 = self.conv_3(down2)
+        # down3 = self.down3(conv_3)
+        # conv_4 = self.conv_4(down3)
+        # d = self.d(conv_4)
+        # deconv_3 = self.deconv_3(d)
+
+        # concat3 = self.concat3(conv_3, deconv_3)
+        # cbam3 = self.cbam3(concat3)
+        # deconv_2 = self.deconv_2(cbam3)
+
+        # concat2 = self.concat2(conv_2, deconv_2)
+        # cbam2 = self.cbam2(concat2)
+        # deconv_1 = self.deconv_1(cbam2)
+
+        # concat1 = self.concat1(conv_1, deconv_1)
+        # cbam1 = self.cbam1(concat1)
+        res_out = res_block + conv_input
+        conv_out = self.conv_out(res_out)
+        I_out = self.I_out(conv_out)
+
+        return I_out, I_standard
+
+
+class RestoreNet_MSIA(nn.Module):
+    def __init__(self, filters=16, activation='relu'):
+        super().__init__()
+        # Illumination Attention
+        self.i_input = nn.Conv2d(1,1,kernel_size=3,padding=1)
+        self.i_att = nn.Sigmoid()
+
+        # Network
+        self.conv1_1 = Conv2D(3, filters, activation)
+        self.conv1_2 = Conv2D(filters, filters*2, activation)
+        self.msia1 = MSIA(filters*2, activation)
+        
+        self.conv2_1 = Conv2D(filters*2, filters*4, activation)
+        self.conv2_2 = Conv2D(filters*4, filters*4, activation)
+        self.msia2 = MSIA(filters*4, activation)
+        
+        self.conv3_1 = Conv2D(filters*4, filters*8, activation)
+        self.dropout = nn.Dropout2d(0.5)
+        self.conv3_2 = Conv2D(filters*8, filters*4, activation)
+        self.msia3 = MSIA(filters*4, activation)
+        
+        self.conv4_1 = Conv2D(filters*4, filters*2, activation)
+        self.conv4_2 = Conv2D(filters*2, filters*2, activation)
+        self.msia4 = MSIA(filters*2, activation)
+        
+        self.conv5_1 = Conv2D(filters*2, filters*1, activation)
+        self.conv5_2 = nn.Conv2d(filters, 3, kernel_size=1, padding=0)
+        self.out = nn.Sigmoid()
+    
+    def forward(self, R, I):
+        # Illumination Attention
+        i_input = self.i_input(I)
+        i_att = self.i_att(i_input)
+
+        # Network
+        conv1 = self.conv1_1(R)
+        conv1 = self.conv1_2(conv1)
+        msia1 = self.msia1(conv1, i_att)
+        
+        conv2 = self.conv2_1(msia1)
+        conv2 = self.conv2_2(conv2)
+        msia2 = self.msia2(conv2, i_att)
+        
+        conv3 = self.conv3_1(msia2)
+        conv3 = self.conv3_2(conv3)
+        msia3 = self.msia3(conv3, i_att)
+        
+        conv4 = self.conv4_1(msia3)
+        conv4 = self.conv4_2(conv4)
+        msia4 = self.msia4(conv4, i_att)
+        
+        conv5 = self.conv5_1(msia4)
+        conv5 = self.conv5_2(conv5)
+
+        # out = self.out(conv5)
+        out = conv5.clamp(min=0.0, max=1.0)
+        return out
 
 
 class RestoreNet_Unet(nn.Module):
@@ -200,4 +368,20 @@ class KinD(nn.Module):
         # R_final = self.restore_net(R, I)
         # I_final_3 = torch.cat([I_final, I_final, I_final], dim=1)
         # output = I_final_3 * R_final
+        return R_final, I_final, output
+
+class KinD_plus(nn.Module):
+    def __init__(self, filters=32, activation='lrelu'):
+        super().__init__()
+        self.decom_net = DecomNet()
+        self.restore_net = RestoreNet_MSIA()
+        self.illum_net = IllumNet_Custom()
+    
+    def forward(self, L, ratio):
+        R, I = self.decom_net(L)
+        # R_final, I_final, output = self.KinD_noDecom(R, I, ratio)
+        I_final, I_standard = self.illum_net(I, ratio)
+        R_final = self.restore_net(R, I)
+        I_final_3 = torch.cat([I_final, I_final, I_final], dim=1)
+        output = I_final_3 * R_final
         return R_final, I_final, output
